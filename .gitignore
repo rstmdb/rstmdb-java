@@ -1,0 +1,38 @@
+# gradle
+build/
+.gradle/
+.kotlin
+!gradle-wrapper.jar
+
+# Intellij IDE
+.idea/
+out/
+.idea_modules/
+*.iml
+*.ipr
+*.iws
+
+# Eclipse IDE
+.settings/
+bin/
+.metadata
+.classpath
+.project
+*.tmp
+*.bak
+*.swp
+*~.nib
+.loadpath
+.factorypath
+
+# VS Code IDE
+.vscode/
+.code-workspace
+
+# NetBeans IDE
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+nbactions.xml
+nb-configuration.xml
