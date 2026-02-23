@@ -13,19 +13,27 @@ plugins {
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
+    // Lombok edge releases
+    maven {
+        url 'https://projectlombok.org/edge-releases'
+    }
 }
 
 dependencies {
-    // Use JUnit Jupiter for testing.
-    testImplementation libs.junit.jupiter
+    // impl
+    compileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
+    annotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+    
+    // tests
+    testCompileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
+    testAnnotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
 
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-    // This dependency is exported to consumers, that is to say found on their compile classpath.
-    api libs.commons.math3
-
-    // This dependency is used internally, and not exposed to consumers on their own compile classpath.
-    implementation libs.guava
+    testImplementation 'org.assertj:assertj-core:3.26.3'
+    testImplementation 'org.awaitility:awaitility:4.2.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
@@ -33,6 +41,14 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }
+}
+
+compileJava {
+    options.compilerArgs.addAll(['--release', '11'])
+}
+
+compileTestJava {
+    options.compilerArgs.addAll(['--release', '11'])
 }
 
 tasks.named('test') {

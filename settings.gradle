@@ -12,3 +12,8 @@ plugins {
 
 rootProject.name = 'rstmdb-java'
 include('client')
+include('examples-basic', 'examples-streaming', 'examples-batch')
+
+project(':examples-basic').projectDir = file('examples/basic')
+project(':examples-streaming').projectDir = file('examples/streaming')
+project(':examples-batch').projectDir = file('examples/batch')
