@@ -166,12 +166,13 @@ public final class RstmdbClientImpl implements RstmdbClient {
     }
 
     public CompletableFuture<InstanceList> listInstances() {
-        return doRequest(Operations.LIST_INSTANCES, null, InstanceList.class);
+        // fixme: params can be null. it will be fixed in the DB later
+        return doRequest(Operations.LIST_INSTANCES, Map.of(), InstanceList.class);
     }
 
     public CompletableFuture<InstanceList> listInstances(ListInstancesOptions options) {
-        return doRequest(Operations.LIST_INSTANCES,
-                options != null ? options.toParams() : null, InstanceList.class);
+        // fixme: params can be null. it will be fixed in the DB later
+        return doRequest(Operations.LIST_INSTANCES, options != null ? options.toParams() : Map.of(), InstanceList.class);
     }
 
     public InstanceList listInstancesSync() {
