@@ -9,8 +9,8 @@ Official Java client library for [rstmdb](https://github.com/rstmdb/rstmdb) — 
 ## Roadmap
 * [X] init repo (initial README, .gitignore, LICENSE, etc)
 * [X] skeleton of a multinodular gradle project
-* [~] module with java core client
-* [ ] test containers
+* [ ] [WIP] module with java core client
+* [ ] [WIP] test containers
 * [ ] testing of different JDK versions
 * [ ] maven central publication in the pipeline
 * [ ] SAST security tools in the pipeline
