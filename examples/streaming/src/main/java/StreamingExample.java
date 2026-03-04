@@ -1,8 +1,8 @@
-import com.rstmdb.client.RstmdbClient;
+import com.rstmdb.client.RstmdbClientImpl;
 
 public class StreamingExample {
     public static void main(String[] args) throws Exception {
-        try (var client = RstmdbClient.connect("localhost", 7401)) {
+        try (var client = RstmdbClientImpl.connect("localhost", 7401)) {
 
             // Watch all state changes (no filter)
             var sub = client.watchAllSync();

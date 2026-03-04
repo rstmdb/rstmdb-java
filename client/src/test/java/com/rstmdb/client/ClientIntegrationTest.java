@@ -56,12 +56,12 @@ class ClientIntegrationTest {
         if (server != null) server.close();
     }
 
-    private RstmdbClient connectToMock() throws IOException {
+    private RstmdbClientImpl connectToMock() throws IOException {
         return connectToMock(null);
     }
 
-    private RstmdbClient connectToMock(RstmdbOptions opts) throws IOException {
-        return RstmdbClient.connect("127.0.0.1", server.getPort(), opts);
+    private RstmdbClientImpl connectToMock(RstmdbOptions opts) throws IOException {
+        return RstmdbClientImpl.connect("127.0.0.1", server.getPort(), opts);
     }
 
     @Test
