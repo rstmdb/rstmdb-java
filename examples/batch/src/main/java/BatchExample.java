@@ -1,4 +1,4 @@
-import com.rstmdb.client.RstmdbClient;
+import com.rstmdb.client.RstmdbClientImpl;
 import com.rstmdb.client.model.ApplyEventRequest;
 import com.rstmdb.client.model.BatchMode;
 import com.rstmdb.client.model.BatchOperation;
@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public class BatchExample {
     public static void main(String[] args) throws Exception {
-        try (var client = RstmdbClient.connect("localhost", 7401)) {
+        try (var client = RstmdbClientImpl.connect("localhost", 7401)) {
 
             // Use unique IDs so the example is re-runnable
             var id1 = "batch-" + UUID.randomUUID().toString().substring(0, 8);

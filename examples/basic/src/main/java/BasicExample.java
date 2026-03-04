@@ -1,4 +1,4 @@
-import com.rstmdb.client.RstmdbClient;
+import com.rstmdb.client.RstmdbClientImpl;
 import com.rstmdb.client.RstmdbOptions;
 import com.rstmdb.client.model.ApplyEventRequest;
 import com.rstmdb.client.model.CreateInstanceRequest;
@@ -12,7 +12,7 @@ import java.util.Map;
 
 public class BasicExample {
     public static void main(String[] args) throws Exception {
-        try (var client = RstmdbClient.connect("localhost", 7401,
+        try (var client = RstmdbClientImpl.connect("localhost", 7401,
                 RstmdbOptions.builder().build())) {
 
             // Ping
