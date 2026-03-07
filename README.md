@@ -10,13 +10,13 @@ Official Java client library for [rstmdb](https://github.com/rstmdb/rstmdb) — 
 * [X] init repo (initial README, .gitignore, LICENSE, etc)
 * [X] skeleton of a multinodular gradle project
 * [X] module with a java core client
+* [X] example hello world applications
 * [X] test containers
 * [ ] SAST security tools in the pipeline
 * [ ] testing of different JDK versions
 * [ ] Github pipeline
 * [ ] maven central publication in the pipeline
 * [ ] module with a spring boot autoconfig
-* [ ] example hello world applications
 * [ ] documentation (website or wiki)
 
 ## Requirements
