@@ -36,3 +36,6 @@ dist/
 nbdist/
 nbactions.xml
 nb-configuration.xml
+
+# Kiro
+.kiro/settings/
