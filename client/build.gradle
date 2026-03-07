@@ -19,6 +19,27 @@ repositories {
     }
 }
 
+sourceSets {
+    integration {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration/java')
+        }
+
+        resources.srcDir file('/src/integration/resources')
+    }
+}
+
+configurations {
+    // integration tests
+    // dependency inheritance
+    integrationImplementation.extendsFrom testImplementation
+    integrationRuntimeOnly.extendsFrom testRuntimeOnly
+    integrationCompileOnly.extendsFrom testCompileOnly
+    integrationAnnotationProcessor.extendsFrom testAnnotationProcessor
+}
+
 dependencies {
     // impl
     compileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
@@ -26,7 +47,7 @@ dependencies {
 
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
     
-    // tests
+    // unit tests
     testCompileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
     testAnnotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
 
@@ -34,6 +55,11 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.26.3'
     testImplementation 'org.awaitility:awaitility:4.2.2'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.3'
+
+    // integration tests
+    integrationImplementation project(':testcontainer')
+    integrationImplementation 'org.testcontainers:testcontainers-junit-jupiter:2.0.3'
+
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

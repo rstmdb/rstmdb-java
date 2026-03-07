@@ -1,0 +1,48 @@
+{
+  "states": [
+    "created",
+    "paid",
+    "shipped",
+    "delivered",
+    "cancelled"
+  ],
+  "initial": "created",
+  "transitions": [
+    {
+      "from": [
+        "created"
+      ],
+      "event": "PAY",
+      "to": "paid",
+      "guard": null
+    },
+    {
+      "from": [
+        "paid"
+      ],
+      "event": "SHIP",
+      "to": "shipped",
+      "guard": null
+    },
+    {
+      "from": [
+        "shipped"
+      ],
+      "event": "DELIVER",
+      "to": "delivered",
+      "guard": null
+    },
+    {
+      "from": [
+        "created",
+        "paid"
+      ],
+      "event": "CANCEL",
+      "to": "cancelled",
+      "guard": null
+    }
+  ],
+  "meta": {
+    "description": "Order lifecycle management"
+  }
+}
