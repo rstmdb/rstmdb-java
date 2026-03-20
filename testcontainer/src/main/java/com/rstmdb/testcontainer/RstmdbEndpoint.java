@@ -36,7 +36,7 @@ public record RstmdbEndpoint(String host, int port, Integer metricsPort) {
     }
 
     /**
-     * Returns an {@link URI} using the scheme {@code rstmdb}, e.g. {@code rstmdb://127.0.0.1:7401}.
+     * Returns an {@link URI} using the scheme {@code rstmdb}, e.g. {@code rstmdb://localhost:7401}.
      * <p>
      * This is a convenience; rstmdb itself may or may not use URI syntax.
      */

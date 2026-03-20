@@ -66,4 +66,7 @@ public interface RstmdbClient extends AutoCloseable {
     CompletableFuture<CompactResult> compact();
     CompletableFuture<CompactResult> compact(boolean forceSnapshot);
     CompactResult compactSync();
+
+    CompletableFuture<FlushAllResult> flushAll();
+    FlushAllResult flushAllSync();
 }

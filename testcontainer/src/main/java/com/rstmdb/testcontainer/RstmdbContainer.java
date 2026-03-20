@@ -69,7 +69,7 @@ public class RstmdbContainer extends GenericContainer<RstmdbContainer> {
     private static final String DEFAULT_DATA_DIR = "/data";
     private static final String DEFAULT_CONFIG_DIR = "/etc/rstmdb";
 
-    private static final String CLI_PING_COMMAND = "rstmdb-cli -s 127.0.0.1:" + RSTMDB_PORT + " ping";
+    private static final String CLI_PING_COMMAND = "rstmdb-cli -s localhost:" + RSTMDB_PORT + " ping";
 
     private final WaitAllStrategy waitAllStrategy = new WaitAllStrategy()
         .withStrategy(Wait.forListeningPort())
@@ -126,6 +126,20 @@ public class RstmdbContainer extends GenericContainer<RstmdbContainer> {
             addExposedPort(METRICS_PORT);
             metricsExposed = true;
         }
+        return self();
+    }
+
+    /**
+     * Enables the {@code FLUSH_ALL} operation on the server.
+     * <p>
+     * By default, the rstmdb server disables the flush-all operation for safety.
+     * Call this method to set {@code RSTMDB_ALLOW_FLUSH_ALL=true}, which is typically
+     * required for integration tests that need to reset state between runs.
+     *
+     * @return this container
+     */
+    public RstmdbContainer withFlushAll() {
+        withEnv("RSTMDB_ALLOW_FLUSH_ALL", "true");
         return self();
     }
 

@@ -4,7 +4,9 @@ import com.rstmdb.client.exception.RstmdbException;
 import com.rstmdb.client.model.*;
 import com.rstmdb.testcontainer.RstmdbContainer;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -25,47 +27,37 @@ import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 @Testcontainers
 class RstmdbContainerSyncIT {
 
-    /**
-     * Shared container: started once for the test class and stopped afterwards.
-     */
     @Container
-    static final RstmdbContainer RSTMDB = new RstmdbContainer();
+    static final RstmdbContainer RSTMDB = new RstmdbContainer("rstmdb/rstmdb:0.2.0")
+            .withFlushAll();
 
     static RstmdbClient target;
 
     @BeforeAll
     static void beforeAll() throws IOException {
         target = RstmdbClientImpl.connect(RSTMDB.getHost(), RSTMDB.getRstmdbPort());
-
-        final var machineSummariesBeforeCreation = target.listMachinesSync();
-        System.out.println("machine list before creation");
-        System.out.println(machineSummariesBeforeCreation);
-
-        // check whether an order machine exists
-        // it may exist because the database has a state and there's no way to delete a machine
-        // if no, RstmdbException error with `MACHINE_NOT_FOUND` code should be thrown
-        thenThrownBy(() -> target.getMachineSync("order", 1))
-                .isInstanceOf(RstmdbException.class)
-                .satisfies(ex -> {
-                    var rstmdbEx = (RstmdbException) ex;
-                    then(rstmdbEx.getErrorCode()).isEqualTo("MACHINE_NOT_FOUND");
-                });
-
-        // we create a machine for test purposes
-        // all tests use the following machine
-        final var orderMachineDefinition = JsonUtils.readFile("test-order-machine.json", MachineDefinition.class);
-        final var putMachineRequest = PutMachineRequest.builder().machine("order").version(1).definition(orderMachineDefinition).build();
-        target.putMachineSync(putMachineRequest);
-
-        final var machineSummariesAfterCreation = target.listMachinesSync();
-        System.out.println("machine list after creation");
-        System.out.println(machineSummariesAfterCreation);
-
     }
 
     @AfterAll
     static void afterAll() throws Exception {
         target.close();
+    }
+
+    @BeforeEach
+    void createTestMachine() throws IOException {
+        final var definition = JsonUtils.readFile("test-order-machine.json", MachineDefinition.class);
+        final var request = PutMachineRequest.builder()
+                .machine("order")
+                .version(1)
+                .definition(definition)
+                .build();
+        target.putMachineSync(request);
+    }
+
+    @AfterEach
+    void cleanUp() {
+        // Wipe all instances so each test starts with an empty database.
+        target.flushAllSync();
     }
 
     @Test
@@ -76,7 +68,7 @@ class RstmdbContainerSyncIT {
         // container is started by @Container annotation
 
         // when
-        var result = RSTMDB.execInContainer("rstmdb-cli", "-s", "127.0.0.1:7401", "ping");
+        var result = RSTMDB.execInContainer("rstmdb-cli", "-s", "localhost:7401", "ping");
 
         // then
         then(RSTMDB.isRunning()).isTrue();
@@ -116,7 +108,7 @@ class RstmdbContainerSyncIT {
     @DisplayName("When machine exists Then returns machine definition")
     void shouldGetMachineSync() {
         // given
-        // order machine created in beforeAll
+        // order machine created in beforeEach
 
         // when
         var machine = target.getMachineSync("order", 1);
@@ -131,7 +123,7 @@ class RstmdbContainerSyncIT {
     @DisplayName("When machines exist Then returns list of machines")
     void shouldListMachinesSync() {
         // given
-        // order machine created in beforeAll
+        // order machine created in beforeEach
 
         // when
         var machines = target.listMachinesSync();
@@ -167,12 +159,11 @@ class RstmdbContainerSyncIT {
     void shouldGetInstanceSync() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstanceSync(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstanceSync(createRequest);
+                .build());
 
         // when
         var instance = target.getInstanceSync(instanceId);
@@ -188,14 +179,12 @@ class RstmdbContainerSyncIT {
     void shouldListInstancesSync() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var request = CreateInstanceRequest.builder()
+        target.createInstanceSync(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
                 .initialCtx(Map.of("customer", "alice"))
-                .build();
-
-        target.createInstanceSync(request);
+                .build());
 
         // when
         var instances = target.listInstancesSync();
@@ -209,6 +198,12 @@ class RstmdbContainerSyncIT {
     @DisplayName("When listing with options Then returns filtered instances")
     void shouldListInstancesWithOptionsSync() {
         // given
+        final var instanceId = UUID.randomUUID().toString();
+        target.createInstanceSync(CreateInstanceRequest.builder()
+                .instanceId(instanceId)
+                .machine("order")
+                .version(1)
+                .build());
         var options = ListInstancesOptions.builder()
                 .machine("order")
                 .build();
@@ -226,12 +221,11 @@ class RstmdbContainerSyncIT {
     void shouldApplyEventSync() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstanceSync(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstanceSync(createRequest);
+                .build());
 
         var eventRequest = ApplyEventRequest.builder()
                 .instanceId(instanceId)
@@ -260,7 +254,6 @@ class RstmdbContainerSyncIT {
                         .version(1)
                         .build()
         );
-
         var eventOp = BatchOperation.applyEvent(
                 ApplyEventRequest.builder()
                         .instanceId(instanceId)
@@ -282,12 +275,11 @@ class RstmdbContainerSyncIT {
     void shouldDeleteInstanceSync() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstanceSync(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstanceSync(createRequest);
+                .build());
 
         // when
         var result = target.deleteInstanceSync(instanceId);
@@ -296,13 +288,12 @@ class RstmdbContainerSyncIT {
         then(result).isNotNull();
         then(result.isDeleted()).isTrue();
 
-        // fixme: at the moment instance doesn't note disappear
-//        thenThrownBy(() -> target.getInstanceSync(instanceId))
-//                .isInstanceOf(RstmdbException.class)
-//                .satisfies(ex -> {
-//                    var rstmdbEx = (RstmdbException) ex;
-//                    then(rstmdbEx.getErrorCode()).isEqualTo("INSTANCE_NOT_FOUND");
-//                });
+        thenThrownBy(() -> target.getInstanceSync(instanceId))
+                .isInstanceOf(RstmdbException.class)
+                .satisfies(ex -> {
+                    var rstmdbEx = (RstmdbException) ex;
+                    then(rstmdbEx.getErrorCode()).isEqualTo("INSTANCE_NOT_FOUND");
+                });
     }
 
     @Test
@@ -310,12 +301,11 @@ class RstmdbContainerSyncIT {
     void shouldSnapshotInstanceSync() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstanceSync(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstanceSync(createRequest);
+                .build());
 
         // when
         var result = target.snapshotInstanceSync(instanceId);
@@ -329,7 +319,7 @@ class RstmdbContainerSyncIT {
     @DisplayName("When WAL is read Then returns records")
     void shouldWalReadSync() {
         // given
-        // WAL has entries from previous operations
+        // WAL has entries from beforeEach machine creation
 
         // when
         var result = target.walReadSync(0L);
@@ -343,7 +333,7 @@ class RstmdbContainerSyncIT {
     @DisplayName("When WAL stats are requested Then returns statistics")
     void shouldWalStatsSync() {
         // given
-        // WAL has entries from previous operations
+        // WAL has entries from beforeEach machine creation
 
         // when
         var result = target.walStatsSync();
@@ -357,7 +347,7 @@ class RstmdbContainerSyncIT {
     @DisplayName("When compact is called Then completes successfully")
     void shouldCompactSync() {
         // given
-        // WAL has entries from previous operations
+        // WAL has entries from beforeEach machine creation
 
         // when
         var result = target.compactSync();
@@ -371,12 +361,11 @@ class RstmdbContainerSyncIT {
     void shouldWatchInstanceSync() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstanceSync(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstanceSync(createRequest);
+                .build());
 
         var watchRequest = WatchInstanceRequest.builder()
                 .instanceId(instanceId)
@@ -391,10 +380,44 @@ class RstmdbContainerSyncIT {
     }
 
     @Test
+    @DisplayName("When flushAllSync is called Then all instances are removed")
+    void shouldFlushAllSync() {
+        // given
+        final var instanceId = UUID.randomUUID().toString();
+        target.createInstanceSync(CreateInstanceRequest.builder()
+                .instanceId(instanceId)
+                .machine("order")
+                .version(1)
+                .build());
+
+        // when
+        var result = target.flushAllSync();
+
+        // then
+        then(result).isNotNull();
+        then(result.isFlushed()).isTrue();
+        then(result.getInstancesRemoved()).isGreaterThan(0);
+
+        thenThrownBy(() -> target.getInstanceSync(instanceId))
+                .isInstanceOf(RstmdbException.class)
+                .satisfies(ex -> {
+                    var rstmdbEx = (RstmdbException) ex;
+                    then(rstmdbEx.getErrorCode()).isEqualTo("INSTANCE_NOT_FOUND");
+                });
+
+        thenThrownBy(() -> target.getMachineSync("order", 1))
+                .isInstanceOf(RstmdbException.class)
+                .satisfies(ex -> {
+                    var rstmdbEx = (RstmdbException) ex;
+                    then(rstmdbEx.getErrorCode()).isEqualTo("MACHINE_NOT_FOUND");
+                });
+    }
+
+    @Test
     @DisplayName("When watching all instances Then returns subscription")
     void shouldWatchAllSync() {
         // given
-        // instances exist from previous tests
+        // client is connected
 
         // when
         var subscription = target.watchAllSync();
