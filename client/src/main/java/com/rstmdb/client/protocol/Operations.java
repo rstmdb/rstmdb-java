@@ -25,6 +25,7 @@ public final class Operations {
     public static final String WAL_READ = "WAL_READ";
     public static final String WAL_STATS = "WAL_STATS";
     public static final String COMPACT = "COMPACT";
+    public static final String FLUSH_ALL = "FLUSH_ALL";
 
     private Operations() {}
 }
