@@ -4,7 +4,9 @@ import com.rstmdb.client.exception.RstmdbException;
 import com.rstmdb.client.model.*;
 import com.rstmdb.testcontainer.RstmdbContainer;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
@@ -25,35 +27,36 @@ import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 class RstmdbContainerAsyncIT {
 
     @Container
-    static final RstmdbContainer RSTMDB = new RstmdbContainer();
+    static final RstmdbContainer RSTMDB = new RstmdbContainer("rstmdb/rstmdb:0.2.0")
+            .withFlushAll();
 
     static RstmdbClient target;
 
     @BeforeAll
     static void beforeAll() throws IOException {
         target = RstmdbClientImpl.connect(RSTMDB.getHost(), RSTMDB.getRstmdbPort());
-
-        // check whether an order machine exists
-        // it may exist because the database has a state and there's no way to delete a machine
-        // if no, RstmdbException error with `MACHINE_NOT_FOUND` code should be thrown
-        thenThrownBy(() -> target.getMachine("order", 1).join())
-                .cause()
-                .isInstanceOf(RstmdbException.class)
-                .satisfies(ex -> {
-                    var rstmdbEx = (RstmdbException) ex;
-                    then(rstmdbEx.getErrorCode()).isEqualTo("MACHINE_NOT_FOUND");
-                });
-
-        // we create a machine for test purposes
-        // all tests use the following machine
-        final var orderMachineDefinition = JsonUtils.readFile("test-order-machine.json", MachineDefinition.class);
-        final var putMachineRequest = PutMachineRequest.builder().machine("order").version(1).definition(orderMachineDefinition).build();
-        target.putMachine(putMachineRequest).join();
     }
 
     @AfterAll
     static void afterAll() throws Exception {
         target.close();
+    }
+
+    @BeforeEach
+    void createTestMachine() throws IOException {
+        final var definition = JsonUtils.readFile("test-order-machine.json", MachineDefinition.class);
+        final var request = PutMachineRequest.builder()
+                .machine("order")
+                .version(1)
+                .definition(definition)
+                .build();
+        target.putMachine(request).join();
+    }
+
+    @AfterEach
+    void cleanUp() {
+        // Wipe all instances so each test starts with an empty database.
+        target.flushAllSync();
     }
 
     @Test
@@ -63,11 +66,8 @@ class RstmdbContainerAsyncIT {
         // client is connected
 
         // when
-        var future = target.ping();
-
         // then
-        then(future).isNotNull();
-        future.join();
+        target.ping().join();
     }
 
     @Test
@@ -77,43 +77,40 @@ class RstmdbContainerAsyncIT {
         // client is connected
 
         // when
-        var future = target.getInfo();
+        var result = target.getInfo().join();
 
         // then
-        var info = future.join();
-        then(info).isNotNull();
-        then(info.getServerVersion()).isNotNull();
+        then(result).isNotNull();
+        then(result.getServerVersion()).isNotNull();
     }
 
     @Test
     @DisplayName("When machine exists Then returns machine definition")
     void shouldGetMachine() {
         // given
-        // order machine created in beforeAll
+        // order machine created in beforeEach
 
         // when
-        var future = target.getMachine("order", 1);
+        var result = target.getMachine("order", 1).join();
 
         // then
-        var machine = future.join();
-        then(machine).isNotNull();
-        then(machine.getDefinition()).isNotNull();
-        then(machine.getDefinition().getStates()).contains("created", "paid", "shipped", "delivered", "cancelled");
+        then(result).isNotNull();
+        then(result.getDefinition()).isNotNull();
+        then(result.getDefinition().getStates()).contains("created", "paid", "shipped", "delivered", "cancelled");
     }
 
     @Test
     @DisplayName("When machines exist Then returns list of machines")
     void shouldListMachines() {
         // given
-        // order machine created in beforeAll
+        // order machine created in beforeEach
 
         // when
-        var future = target.listMachines();
+        var result = target.listMachines().join();
 
         // then
-        var machines = future.join();
-        then(machines).isNotEmpty();
-        then(machines).anyMatch(m -> "order".equals(m.getMachine()) && m.getVersions().contains(1));
+        then(result).isNotEmpty();
+        then(result).anyMatch(m -> "order".equals(m.getMachine()) && m.getVersions().contains(1));
     }
 
     @Test
@@ -129,10 +126,9 @@ class RstmdbContainerAsyncIT {
                 .build();
 
         // when
-        var future = target.createInstance(request);
+        var result = target.createInstance(request).join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
         then(result.getInstanceId()).isEqualTo(instanceId);
         then(result.getState()).isEqualTo("created");
@@ -143,53 +139,60 @@ class RstmdbContainerAsyncIT {
     void shouldGetInstance() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstance(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstance(createRequest).join();
+                .build()).join();
 
         // when
-        var future = target.getInstance(instanceId);
+        var result = target.getInstance(instanceId).join();
 
         // then
-        var instance = future.join();
-        then(instance).isNotNull();
-        then(instance.getMachine()).isEqualTo("order");
-        then(instance.getState()).isEqualTo("created");
+        then(result).isNotNull();
+        then(result.getMachine()).isEqualTo("order");
+        then(result.getState()).isEqualTo("created");
     }
 
     @Test
     @DisplayName("When instances exist Then returns list of instances")
     void shouldListInstances() {
         // given
-        // instances created in previous tests
+        final var instanceId = UUID.randomUUID().toString();
+        target.createInstance(CreateInstanceRequest.builder()
+                .instanceId(instanceId)
+                .machine("order")
+                .version(1)
+                .build()).join();
 
         // when
-        var future = target.listInstances();
+        var result = target.listInstances().join();
 
         // then
-        var instances = future.join();
-        then(instances).isNotNull();
-        then(instances.getInstances()).isNotEmpty();
+        then(result).isNotNull();
+        then(result.getInstances()).isNotEmpty();
     }
 
     @Test
     @DisplayName("When listing with options Then returns filtered instances")
     void shouldListInstancesWithOptions() {
         // given
+        final var instanceId = UUID.randomUUID().toString();
+        target.createInstance(CreateInstanceRequest.builder()
+                .instanceId(instanceId)
+                .machine("order")
+                .version(1)
+                .build()).join();
         var options = ListInstancesOptions.builder()
                 .machine("order")
                 .build();
 
         // when
-        var future = target.listInstances(options);
+        var result = target.listInstances(options).join();
 
         // then
-        var instances = future.join();
-        then(instances).isNotNull();
-        then(instances.getInstances()).allMatch(i -> "order".equals(i.getMachine()));
+        then(result).isNotNull();
+        then(result.getInstances()).allMatch(i -> "order".equals(i.getMachine()));
     }
 
     @Test
@@ -197,12 +200,11 @@ class RstmdbContainerAsyncIT {
     void shouldApplyEvent() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstance(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstance(createRequest).join();
+                .build()).join();
 
         var eventRequest = ApplyEventRequest.builder()
                 .instanceId(instanceId)
@@ -211,10 +213,9 @@ class RstmdbContainerAsyncIT {
                 .build();
 
         // when
-        var future = target.applyEvent(eventRequest);
+        var result = target.applyEvent(eventRequest).join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
         then(result.getFromState()).isEqualTo("created");
         then(result.getToState()).isEqualTo("paid");
@@ -232,7 +233,6 @@ class RstmdbContainerAsyncIT {
                         .version(1)
                         .build()
         );
-
         var eventOp = BatchOperation.applyEvent(
                 ApplyEventRequest.builder()
                         .instanceId(instanceId)
@@ -241,13 +241,12 @@ class RstmdbContainerAsyncIT {
         );
 
         // when
-        var future = target.batch(BatchMode.ATOMIC, createOp, eventOp);
+        var result = target.batch(BatchMode.ATOMIC, createOp, eventOp).join();
 
         // then
-        var results = future.join();
-        then(results).hasSize(2);
-        then(results.get(0).getStatus()).isEqualTo("ok");
-        then(results.get(1).getStatus()).isEqualTo("ok");
+        then(result).hasSize(2);
+        then(result.get(0).getStatus()).isEqualTo("ok");
+        then(result.get(1).getStatus()).isEqualTo("ok");
     }
 
     @Test
@@ -255,18 +254,16 @@ class RstmdbContainerAsyncIT {
     void shouldDeleteInstance() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstance(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstance(createRequest).join();
+                .build()).join();
 
         // when
-        var future = target.deleteInstance(instanceId);
+        var result = target.deleteInstance(instanceId).join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
         then(result.isDeleted()).isTrue();
     }
@@ -276,20 +273,26 @@ class RstmdbContainerAsyncIT {
     void shouldDeleteInstanceWithIdempotencyKey() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstance(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstance(createRequest).join();
+                .build()).join();
 
         // when
-        var future = target.deleteInstance(instanceId, "idempotency-key-1");
+        var result = target.deleteInstance(instanceId, "idempotency-key-1").join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
         then(result.isDeleted()).isTrue();
+
+        thenThrownBy(() -> target.getInstance(instanceId).join())
+                .cause()
+                .isInstanceOf(RstmdbException.class)
+                .satisfies(ex -> {
+                    var rstmdbEx = (RstmdbException) ex;
+                    then(rstmdbEx.getErrorCode()).isEqualTo("INSTANCE_NOT_FOUND");
+                });
     }
 
     @Test
@@ -297,18 +300,16 @@ class RstmdbContainerAsyncIT {
     void shouldSnapshotInstance() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstance(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstance(createRequest).join();
+                .build()).join();
 
         // when
-        var future = target.snapshotInstance(instanceId);
+        var result = target.snapshotInstance(instanceId).join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
         then(result.getInstanceId()).isEqualTo(instanceId);
     }
@@ -317,13 +318,12 @@ class RstmdbContainerAsyncIT {
     @DisplayName("When WAL is read Then returns records")
     void shouldWalRead() {
         // given
-        // WAL has entries from previous operations
+        // WAL has entries from beforeEach machine creation
 
         // when
-        var future = target.walRead(0L);
+        var result = target.walRead(0L).join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
         then(result.getRecords()).isNotNull();
     }
@@ -332,13 +332,12 @@ class RstmdbContainerAsyncIT {
     @DisplayName("When WAL is read with limit Then returns limited records")
     void shouldWalReadWithLimit() {
         // given
-        // WAL has entries from previous operations
+        // WAL has entries from beforeEach machine creation
 
         // when
-        var future = target.walRead(0L, 10);
+        var result = target.walRead(0L, 10).join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
         then(result.getRecords()).isNotNull();
     }
@@ -347,13 +346,12 @@ class RstmdbContainerAsyncIT {
     @DisplayName("When WAL stats are requested Then returns statistics")
     void shouldWalStats() {
         // given
-        // WAL has entries from previous operations
+        // WAL has entries from beforeEach machine creation
 
         // when
-        var future = target.walStats();
+        var result = target.walStats().join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
         then(result.getLatestOffset()).isNotNull();
     }
@@ -362,13 +360,12 @@ class RstmdbContainerAsyncIT {
     @DisplayName("When compact is called Then completes successfully")
     void shouldCompact() {
         // given
-        // WAL has entries from previous operations
+        // WAL has entries from beforeEach machine creation
 
         // when
-        var future = target.compact();
+        var result = target.compact().join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
     }
 
@@ -376,13 +373,12 @@ class RstmdbContainerAsyncIT {
     @DisplayName("When compact with force snapshot Then completes successfully")
     void shouldCompactWithForceSnapshot() {
         // given
-        // WAL has entries from previous operations
+        // WAL has entries from beforeEach machine creation
 
         // when
-        var future = target.compact(true);
+        var result = target.compact(true).join();
 
         // then
-        var result = future.join();
         then(result).isNotNull();
     }
 
@@ -391,39 +387,73 @@ class RstmdbContainerAsyncIT {
     void shouldWatchInstance() {
         // given
         final var instanceId = UUID.randomUUID().toString();
-        var createRequest = CreateInstanceRequest.builder()
+        target.createInstance(CreateInstanceRequest.builder()
                 .instanceId(instanceId)
                 .machine("order")
                 .version(1)
-                .build();
-        target.createInstance(createRequest).join();
+                .build()).join();
 
         var watchRequest = WatchInstanceRequest.builder()
                 .instanceId(instanceId)
                 .build();
 
         // when
-        var future = target.watchInstance(watchRequest);
+        var result = target.watchInstance(watchRequest).join();
 
         // then
-        var subscription = future.join();
-        then(subscription).isNotNull();
-        subscription.close();
+        then(result).isNotNull();
+        result.close();
+    }
+
+    @Test
+    @DisplayName("When flushAll is called Then all instances are removed")
+    void shouldFlushAll() {
+        // given
+        final var instanceId = UUID.randomUUID().toString();
+        target.createInstance(CreateInstanceRequest.builder()
+                .instanceId(instanceId)
+                .machine("order")
+                .version(1)
+                .build()).join();
+
+        // when
+        var result = target.flushAll().join();
+
+        // then
+        then(result).isNotNull();
+        then(result.isFlushed()).isTrue();
+        then(result.getInstancesRemoved()).isGreaterThan(0);
+        then(result.getMachinesRemoved()).isGreaterThan(0);
+
+        thenThrownBy(() -> target.getInstance(instanceId).join())
+                .cause()
+                .isInstanceOf(RstmdbException.class)
+                .satisfies(ex -> {
+                    var rstmdbEx = (RstmdbException) ex;
+                    then(rstmdbEx.getErrorCode()).isEqualTo("INSTANCE_NOT_FOUND");
+                });
+
+        thenThrownBy(() -> target.getMachine("order", 1).join())
+                .cause()
+                .isInstanceOf(RstmdbException.class)
+                .satisfies(ex -> {
+                    var rstmdbEx = (RstmdbException) ex;
+                    then(rstmdbEx.getErrorCode()).isEqualTo("MACHINE_NOT_FOUND");
+                });
     }
 
     @Test
     @DisplayName("When watching all instances Then returns subscription")
     void shouldWatchAll() {
         // given
-        // instances exist from previous tests
+        // client is connected
 
         // when
-        var future = target.watchAll();
+        var result = target.watchAll().join();
 
         // then
-        var subscription = future.join();
-        then(subscription).isNotNull();
-        subscription.close();
+        then(result).isNotNull();
+        result.close();
     }
 
     @Test
@@ -436,11 +466,10 @@ class RstmdbContainerAsyncIT {
                 .build();
 
         // when
-        var future = target.watchAll(options);
+        var result = target.watchAll(options).join();
 
         // then
-        var subscription = future.join();
-        then(subscription).isNotNull();
-        subscription.close();
+        then(result).isNotNull();
+        result.close();
     }
 }

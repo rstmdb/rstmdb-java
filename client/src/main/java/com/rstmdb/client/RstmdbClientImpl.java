@@ -10,6 +10,7 @@ import com.rstmdb.client.model.BatchMode;
 import com.rstmdb.client.model.BatchOperation;
 import com.rstmdb.client.model.BatchResult;
 import com.rstmdb.client.model.CompactResult;
+import com.rstmdb.client.model.FlushAllResult;
 import com.rstmdb.client.model.CreateInstanceRequest;
 import com.rstmdb.client.model.CreateInstanceResult;
 import com.rstmdb.client.model.DeleteInstanceResult;
@@ -166,13 +167,11 @@ public final class RstmdbClientImpl implements RstmdbClient {
     }
 
     public CompletableFuture<InstanceList> listInstances() {
-        // fixme: params can be null. it will be fixed in the DB later
-        return doRequest(Operations.LIST_INSTANCES, Map.of(), InstanceList.class);
+        return doRequest(Operations.LIST_INSTANCES, null, InstanceList.class);
     }
 
     public CompletableFuture<InstanceList> listInstances(ListInstancesOptions options) {
-        // fixme: params can be null. it will be fixed in the DB later
-        return doRequest(Operations.LIST_INSTANCES, options != null ? options.toParams() : Map.of(), InstanceList.class);
+        return doRequest(Operations.LIST_INSTANCES, options, InstanceList.class);
     }
 
     public InstanceList listInstancesSync() {
@@ -320,6 +319,16 @@ public final class RstmdbClientImpl implements RstmdbClient {
 
     public CompactResult compactSync() {
         return sync(compact());
+    }
+
+    // --- Flush Operations ---
+
+    public CompletableFuture<FlushAllResult> flushAll() {
+        return doRequest(Operations.FLUSH_ALL, null, FlushAllResult.class);
+    }
+
+    public FlushAllResult flushAllSync() {
+        return sync(flushAll());
     }
 
     // --- Lifecycle ---

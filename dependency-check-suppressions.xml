@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.4.xsd">
+
+    <!--
+      Keep suppressions narrow:
+      - Prefer sha1 for a single exact artifact
+      - Otherwise use packageUrl or gav
+      - Add an "until" date for temporary exceptions
+      - Document the reason in notes
+    -->
+
+    <!-- Example 1: suppress a false-positive CPE on one exact artifact -->
+    <!-- Replace the sha1 and cpe values with the ones from your report -->
+    <!--
+    <suppress>
+        <notes><![CDATA[
+        False positive CPE match for an exact artifact.
+        Verified manually against the actual library coordinates and vendor advisories.
+        Ticket: SEC-123
+        ]]></notes>
+        <sha1>REPLACE_WITH_REAL_SHA1</sha1>
+        <cpe>cpe:/a:vendor:product</cpe>
+    </suppress>
+    -->
+
+    <!-- Example 2: suppress a false-positive CVE for one Maven package -->
+    <!--
+    <suppress>
+        <notes><![CDATA[
+        False positive CVE on a specific Maven package/version line.
+        Verified this CVE does not apply to this package.
+        Ticket: SEC-124
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.example/example-lib@.*$</packageUrl>
+        <vulnerabilityName>CVE-2024-12345</vulnerabilityName>
+    </suppress>
+    -->
+
+    <!-- Example 3: temporary suppression for a known issue with an expiry -->
+    <!--
+    <suppress until="2026-06-30Z">
+        <notes><![CDATA[
+        Temporary risk acceptance until upstream fix is adopted.
+        Ticket: SEC-125
+        ]]></notes>
+        <gav regex="true">com\.example:example-lib</gav>
+        <cve>CVE-2025-99999</cve>
+    </suppress>
+    -->
+
+    <!-- Example 4: suppress an incorrect CPE on a group/artifact pattern -->
+    <!--
+    <suppress>
+        <notes><![CDATA[
+        Incorrect product identification by CPE matching.
+        Ticket: SEC-126
+        ]]></notes>
+        <gav regex="true">org\.springframework\.security:spring.*</gav>
+        <cpe>cpe:/a:wrong:product</cpe>
+    </suppress>
+    -->
+
+</suppressions>
