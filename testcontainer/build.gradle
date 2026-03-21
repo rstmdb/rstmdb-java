@@ -5,8 +5,35 @@ plugins {
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
+    // Lombok edge releases
+    maven {
+        url 'https://projectlombok.org/edge-releases'
+    }
 }
 
 dependencies {
+    compileOnly 'org.projectlombok:lombok:edge-SNAPSHOT'
+    annotationProcessor 'org.projectlombok:lombok:edge-SNAPSHOT'
     implementation "org.testcontainers:testcontainers:2.0.3"
+}
+
+// Apply a specific Java toolchain to ease working on different environments.
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
+def toolchains = extensions.getByType(JavaToolchainService)
+
+tasks.register('testJdk25', Test) {
+    description = 'Runs unit tests on JDK 25'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    javaLauncher = toolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    useJUnitPlatform()
+    shouldRunAfter(tasks.named('test'))
 }
