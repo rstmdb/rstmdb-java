@@ -153,9 +153,11 @@ publishing {
     }
 }
 
-if (System.getenv('MAVEN_GPG_PRIVATE_KEY')) {
-    signing {
-        useInMemoryPgpKeys(System.getenv('MAVEN_GPG_PRIVATE_KEY'), null)
-        sign publishing.publications.mavenJava
-    }
+signing {
+    useInMemoryPgpKeys(System.getenv('MAVEN_GPG_PRIVATE_KEY'), '')
+    sign publishing.publications.mavenJava
+}
+
+tasks.withType(Sign) {
+    onlyIf { System.getenv('MAVEN_GPG_PRIVATE_KEY') != null }
 }
