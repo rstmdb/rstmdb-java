@@ -14,8 +14,8 @@ Official Java client library for [rstmdb](https://github.com/rstmdb/rstmdb) — 
 * [X] test containers
 * [X] SAST (dependency check) security tools in the pipeline
 * [X] testing of different JDK versions
-* [ ] Github pipeline
-* [ ] maven central publication in the pipeline
+* [X] Github pipeline
+* [X] maven central publication in the pipeline
 * [ ] module with a spring boot autoconfig
 * [ ] documentation (website or wiki)
 
