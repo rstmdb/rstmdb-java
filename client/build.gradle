@@ -125,6 +125,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+            version = (System.getenv('RELEASE_VERSION') ?: '0.0.0-SNAPSHOT').replaceAll(/^v/, '')
             pom {
                 name = 'rstmdb-client'
                 description = 'Official Java client for rstmdb'
