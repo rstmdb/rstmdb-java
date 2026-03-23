@@ -140,7 +140,15 @@ publishing {
                         url = 'https://opensource.org/licenses/MIT'
                     }
                 }
+                developers {
+                    developer {
+                        name = 'rstmdb'
+                        url = 'https://github.com/rstmdb'
+                    }
+                }
                 scm {
+                    connection = 'scm:git:git://github.com/rstmdb/rstmdb-java.git'
+                    developerConnection = 'scm:git:ssh://github.com/rstmdb/rstmdb-java.git'
                     url = 'https://github.com/rstmdb/rstmdb-java'
                 }
             }
