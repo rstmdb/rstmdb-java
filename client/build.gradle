@@ -9,8 +9,7 @@ plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
     id 'checkstyle'
-    id 'maven-publish'
-    id 'signing'
+    id 'com.vanniktech.maven.publish'
 }
 
 repositories {
@@ -121,57 +120,32 @@ tasks.withType(Checkstyle) {
     }
 }
 
-group = 'com.rstmdb'
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            groupId = 'com.rstmdb'
-            artifactId = 'rstmdb-client'
-            version = (System.getenv('RELEASE_VERSION') ?: '0.0.0-SNAPSHOT').replaceAll(/^v/, '')
-            from components.java
-            pom {
-                name = 'rstmdb-client'
-                description = 'Official Java client for rstmdb'
-                url = 'https://github.com/rstmdb/rstmdb-java'
-                licenses {
-                    license {
-                        name = 'MIT'
-                        url = 'https://opensource.org/licenses/MIT'
-                    }
-                }
-                developers {
-                    developer {
-                        name = 'rstmdb'
-                        url = 'https://github.com/rstmdb'
-                    }
-                }
-                scm {
-                    connection = 'scm:git:git://github.com/rstmdb/rstmdb-java.git'
-                    developerConnection = 'scm:git:ssh://github.com/rstmdb/rstmdb-java.git'
-                    url = 'https://github.com/rstmdb/rstmdb-java'
-                }
+    coordinates('com.rstmdb', 'rstmdb-client', (System.getenv('RELEASE_VERSION') ?: '0.0.0-SNAPSHOT').replaceAll(/^v/, ''))
+
+    pom {
+        name = 'rstmdb-client'
+        description = 'Official Java client for rstmdb'
+        url = 'https://github.com/rstmdb/rstmdb-java'
+        licenses {
+            license {
+                name = 'MIT'
+                url = 'https://opensource.org/licenses/MIT'
             }
         }
-    }
-
-    repositories {
-        maven {
-            name = 'ossrh-staging-api'
-            url = 'https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/'
-            credentials {
-                username = System.getenv('CENTRAL_USERNAME')
-                password = System.getenv('CENTRAL_PASSWORD')
+        developers {
+            developer {
+                name = 'rstmdb'
+                url = 'https://github.com/rstmdb'
             }
         }
+        scm {
+            connection = 'scm:git:git://github.com/rstmdb/rstmdb-java.git'
+            developerConnection = 'scm:git:ssh://github.com/rstmdb/rstmdb-java.git'
+            url = 'https://github.com/rstmdb/rstmdb-java'
+        }
     }
-}
-
-signing {
-    useInMemoryPgpKeys(System.getenv('MAVEN_GPG_PRIVATE_KEY'), '')
-    sign publishing.publications.mavenJava
-}
-
-tasks.withType(Sign) {
-    onlyIf { System.getenv('MAVEN_GPG_PRIVATE_KEY') != null }
 }
