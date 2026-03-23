@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Custom deserializer that handles a field which can be either a single string
- * or an array of strings on the wire. Always deserializes to List<String>.
+ * or an array of strings on the wire. Always deserializes to {@code List<String>}.
  */
 public class StringOrArrayDeserializer extends JsonDeserializer<List<String>> {
 

@@ -5,6 +5,12 @@
  * For more detailed information on multi-project builds, please refer to https://docs.gradle.org/9.3.1/userguide/multi_project_builds.html in the Gradle documentation.
  */
 
+pluginManagement {
+    plugins {
+        id 'com.vanniktech.maven.publish' version '0.36.0'
+    }
+}
+
 plugins {
     // Apply the foojay-resolver plugin to allow automatic download of JDKs
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
