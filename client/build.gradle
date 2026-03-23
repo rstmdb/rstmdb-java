@@ -122,6 +122,7 @@ tasks.withType(Checkstyle) {
 }
 
 publishing {
+    println System.getenv('RELEASE_VERSION')
     publications {
         mavenJava(MavenPublication) {
             from components.java
