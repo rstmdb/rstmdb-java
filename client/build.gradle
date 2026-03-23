@@ -8,6 +8,9 @@
 plugins {
     // Apply the java-library plugin for API and implementation separation.
     id 'java-library'
+    id 'checkstyle'
+    id 'maven-publish'
+    id 'signing'
 }
 
 repositories {
@@ -69,12 +72,12 @@ java {
     }
 }
 
-def toolchains = extensions.getByType(JavaToolchainService)
-
 test {
     // Use JUnit Platform for unit tests.
     useJUnitPlatform()
 }
+
+def toolchains = extensions.getByType(JavaToolchainService)
 
 tasks.register('testJdk25', Test) {
     description = 'Runs unit tests on JDK 25'
@@ -95,4 +98,58 @@ tasks.register('integrationTest', Test) {
     classpath = sourceSets.integration.runtimeClasspath
     useJUnitPlatform()
     shouldRunAfter(tasks.named('test'))
+}
+
+checkstyle {
+    toolVersion = "13.3.0"
+    configFile = file("${rootDir}/config/checkstyle/checkstyle.xml")
+    ignoreFailures = false
+}
+
+tasks.withType(Checkstyle) {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = 'rstmdb-client'
+                description = 'Official Java client for rstmdb'
+                url = 'https://github.com/rstmdb/rstmdb-java'
+                licenses {
+                    license {
+                        name = 'MIT'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/rstmdb/rstmdb-java'
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            url = uri('https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/')
+            credentials {
+                username = System.getenv('CENTRAL_USERNAME')
+                password = System.getenv('CENTRAL_PASSWORD')
+            }
+        }
+    }
+}
+
+signing {
+    useInMemoryPgpKeys(System.getenv('SIGNING_KEY'), null)
+    sign publishing.publications.mavenJava
+}
+
+tasks.withType(Sign) {
+    onlyIf { System.getenv('SIGNING_KEY') != null }
 }
