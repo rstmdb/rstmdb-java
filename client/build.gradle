@@ -121,12 +121,15 @@ tasks.withType(Checkstyle) {
     }
 }
 
+group = 'com.rstmdb'
+
 publishing {
-    println System.getenv('RELEASE_VERSION')
     publications {
         mavenJava(MavenPublication) {
-            from components.java
+            groupId = 'com.rstmdb'
+            artifactId = 'rstmdb-client'
             version = (System.getenv('RELEASE_VERSION') ?: '0.0.0-SNAPSHOT').replaceAll(/^v/, '')
+            from components.java
             pom {
                 name = 'rstmdb-client'
                 description = 'Official Java client for rstmdb'
