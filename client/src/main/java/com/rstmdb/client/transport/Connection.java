@@ -117,8 +117,11 @@ public class Connection {
         if (opts.getClientName() != null) {
             helloParams.put("client_name", opts.getClientName());
         }
-        if (opts.getFeatures() != null) {
-            helloParams.put("features", opts.getFeatures());
+        String[] features = opts.getFeatures();
+        if (features != null && features.length > 0) {
+            helloParams.put("features", features);
+        } else {
+            helloParams.put("features", new String[]{"idempotency", "durable_idempotency", "batch"});
         }
 
         // Send HELLO (always binary_json framing)

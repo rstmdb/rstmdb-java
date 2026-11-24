@@ -4,13 +4,16 @@ import com.rstmdb.client.exception.ErrorCodes;
 import com.rstmdb.client.exception.RstmdbException;
 import com.rstmdb.client.model.ApplyEventRequest;
 import com.rstmdb.client.model.ApplyEventResult;
+import com.rstmdb.client.model.BackupBeginResult;
+import com.rstmdb.client.model.BackupChunkResult;
+import com.rstmdb.client.model.BackupEndResult;
 import com.rstmdb.client.model.BatchMode;
 import com.rstmdb.client.model.BatchOperation;
 import com.rstmdb.client.model.CompactResult;
-import com.rstmdb.client.model.FlushAllResult;
 import com.rstmdb.client.model.CreateInstanceRequest;
 import com.rstmdb.client.model.CreateInstanceResult;
 import com.rstmdb.client.model.DeleteInstanceResult;
+import com.rstmdb.client.model.FlushAllResult;
 import com.rstmdb.client.model.Instance;
 import com.rstmdb.client.model.InstanceList;
 import com.rstmdb.client.model.InstanceSummary;
@@ -21,6 +24,7 @@ import com.rstmdb.client.model.MachineInfo;
 import com.rstmdb.client.model.MachineSummary;
 import com.rstmdb.client.model.PutMachineRequest;
 import com.rstmdb.client.model.PutMachineResult;
+import com.rstmdb.client.model.ReplicationStatusResult;
 import com.rstmdb.client.model.ServerInfo;
 import com.rstmdb.client.model.SnapshotResult;
 import com.rstmdb.client.model.Transition;
@@ -663,7 +667,7 @@ class RstmdbClientImplTest {
     }
 
     @Test
-    @DisplayName("When all error codes are checked Then 16 distinct codes exist")
+    @DisplayName("When all error codes are checked Then 21 distinct codes exist")
     void allErrorCodesExist() {
         // given
         String[] codes = {
@@ -673,13 +677,103 @@ class RstmdbClientImplTest {
                 ErrorCodes.MACHINE_VERSION_EXISTS, ErrorCodes.MACHINE_VERSION_LIMIT_EXCEEDED,
                 ErrorCodes.INSTANCE_NOT_FOUND, ErrorCodes.INSTANCE_EXISTS,
                 ErrorCodes.INVALID_TRANSITION, ErrorCodes.GUARD_FAILED,
-                ErrorCodes.CONFLICT, ErrorCodes.WAL_IO_ERROR,
-                ErrorCodes.INTERNAL_ERROR, ErrorCodes.RATE_LIMITED
+                ErrorCodes.GUARD_UNKNOWN, ErrorCodes.CONFLICT,
+                ErrorCodes.IDEMPOTENCY_CONFLICT, ErrorCodes.READ_ONLY_MODE,
+                ErrorCodes.REPLICATION_TIMEOUT, ErrorCodes.REPLICATION_ERROR,
+                ErrorCodes.WAL_IO_ERROR, ErrorCodes.INTERNAL_ERROR,
+                ErrorCodes.RATE_LIMITED
         };
 
         // when / then
-        then(codes).hasSize(16);
+        then(codes).hasSize(21);
         then(codes).doesNotContainNull();
         then(codes).doesNotHaveDuplicates();
+    }
+
+    @Test
+    @DisplayName("When v0.3/v1 error codes or unknown future codes arrive Then predicates preserve details")
+    void v03AndUnknownErrorCodes() throws IOException {
+        then(RstmdbException.isIdempotencyConflict(
+                new RstmdbException(ErrorCodes.IDEMPOTENCY_CONFLICT, "conflict", false, null))).isTrue();
+        then(RstmdbException.isGuardUnknown(
+                new RstmdbException(ErrorCodes.GUARD_UNKNOWN, "unknown", false, null))).isTrue();
+        then(RstmdbException.isReadOnlyMode(
+                new RstmdbException(ErrorCodes.READ_ONLY_MODE, "ro", false, null))).isTrue();
+        then(RstmdbException.isReplicationTimeout(
+                new RstmdbException(ErrorCodes.REPLICATION_TIMEOUT, "timeout", true, null))).isTrue();
+        then(RstmdbException.isReplicationError(
+                new RstmdbException(ErrorCodes.REPLICATION_ERROR, "rep", false, null))).isTrue();
+
+        server.setRequestHandler(req -> new MockServer.MockError(
+                "FUTURE_ERROR_CODE", "future error", true));
+
+        try (var client = connectToMock()) {
+            thenThrownBy(client::pingSync)
+                    .isInstanceOf(RstmdbException.class)
+                    .satisfies(ex -> {
+                        var re = (RstmdbException) ex;
+                        then(re.getErrorCode()).isEqualTo("FUTURE_ERROR_CODE");
+                        then(re.isRetryable()).isTrue();
+                    });
+        }
+    }
+
+    @Test
+    @DisplayName("When handshake completes Then durable_idempotency and negotiated features are available")
+    @SuppressWarnings("unchecked")
+    void helloDefaultFeaturesAndNegotiatedFeatures() throws IOException {
+        var sentFeatures = new java.util.concurrent.atomic.AtomicReference<List<String>>();
+        server.setRequestHandler(req -> {
+            if ("PING".equals(req.getOp())) {
+                return Map.of("pong", true);
+            }
+            return Map.of();
+        });
+
+        try (var client = connectToMock()) {
+            then(client.getNegotiatedFeatures()).containsExactly("watch", "batch");
+            client.pingSync();
+        }
+        then(sentFeatures.get()).isNull();
+    }
+
+    @Test
+    @DisplayName("When replicationStatus and backup operations are called Then typed results are returned")
+    void replicationStatusAndBackup() throws IOException {
+        server.setRequestHandler(req -> {
+            switch (req.getOp()) {
+                case "REPLICATION_STATUS":
+                    return Map.of("role", "standalone");
+                case "BACKUP_BEGIN":
+                    return Map.of(
+                            "backup_id", "bkp-1",
+                            "manifest", Map.of("version", 1),
+                            "total_bytes", 5,
+                            "chunk_size", 1024
+                    );
+                case "BACKUP_CHUNK":
+                    return Map.of("bytes", "aGVsbG8=", "eof", true);
+                case "BACKUP_END":
+                    return Map.of("ok", true);
+                default:
+                    return Map.of();
+            }
+        });
+
+        try (var client = connectToMock()) {
+            ReplicationStatusResult rep = client.replicationStatusSync();
+            then(rep.getRole()).isEqualTo("standalone");
+
+            BackupBeginResult begin = client.backupBeginSync("gzip");
+            then(begin.getBackupId()).isEqualTo("bkp-1");
+            then(begin.getTotalBytes()).isEqualTo(5L);
+
+            BackupChunkResult chunk = client.backupChunkSync(begin.getBackupId(), 0L, 1024L);
+            then(chunk.isEof()).isTrue();
+            then(new String(chunk.decodeBytes(), java.nio.charset.StandardCharsets.UTF_8)).isEqualTo("hello");
+
+            BackupEndResult end = client.backupEndSync(begin.getBackupId());
+            then(end.isOk()).isTrue();
+        }
     }
 }

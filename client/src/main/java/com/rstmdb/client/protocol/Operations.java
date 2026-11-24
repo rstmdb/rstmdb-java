@@ -26,6 +26,10 @@ public final class Operations {
     public static final String WAL_STATS = "WAL_STATS";
     public static final String COMPACT = "COMPACT";
     public static final String FLUSH_ALL = "FLUSH_ALL";
+    public static final String REPLICATION_STATUS = "REPLICATION_STATUS";
+    public static final String BACKUP_BEGIN = "BACKUP_BEGIN";
+    public static final String BACKUP_CHUNK = "BACKUP_CHUNK";
+    public static final String BACKUP_END = "BACKUP_END";
 
     private Operations() {}
 }

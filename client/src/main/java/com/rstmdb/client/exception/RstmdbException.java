@@ -58,8 +58,28 @@ public class RstmdbException extends RuntimeException {
         return hasCode(ex, ErrorCodes.GUARD_FAILED);
     }
 
+    public static boolean isGuardUnknown(Throwable ex) {
+        return hasCode(ex, ErrorCodes.GUARD_UNKNOWN);
+    }
+
     public static boolean isConflict(Throwable ex) {
         return hasCode(ex, ErrorCodes.CONFLICT);
+    }
+
+    public static boolean isIdempotencyConflict(Throwable ex) {
+        return hasCode(ex, ErrorCodes.IDEMPOTENCY_CONFLICT);
+    }
+
+    public static boolean isReadOnlyMode(Throwable ex) {
+        return hasCode(ex, ErrorCodes.READ_ONLY_MODE);
+    }
+
+    public static boolean isReplicationTimeout(Throwable ex) {
+        return hasCode(ex, ErrorCodes.REPLICATION_TIMEOUT);
+    }
+
+    public static boolean isReplicationError(Throwable ex) {
+        return hasCode(ex, ErrorCodes.REPLICATION_ERROR);
     }
 
     private static boolean hasCode(Throwable ex, String code) {
