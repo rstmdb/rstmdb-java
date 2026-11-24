@@ -6,14 +6,19 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public interface RstmdbClient extends AutoCloseable {
-    
+
     HelloResult getServerInfo();
-    
+
+    List<String> getNegotiatedFeatures();
+
     CompletableFuture<Void> ping();
     void pingSync();
-    
+
     CompletableFuture<ServerInfo> getInfo();
     ServerInfo getInfoSync();
+
+    CompletableFuture<ReplicationStatusResult> replicationStatus();
+    ReplicationStatusResult replicationStatusSync();
     
     CompletableFuture<PutMachineResult> putMachine(PutMachineRequest request);
     PutMachineResult putMachineSync(PutMachineRequest request);
@@ -69,4 +74,15 @@ public interface RstmdbClient extends AutoCloseable {
 
     CompletableFuture<FlushAllResult> flushAll();
     FlushAllResult flushAllSync();
+
+    CompletableFuture<BackupBeginResult> backupBegin();
+    CompletableFuture<BackupBeginResult> backupBegin(String compression);
+    BackupBeginResult backupBeginSync();
+    BackupBeginResult backupBeginSync(String compression);
+
+    CompletableFuture<BackupChunkResult> backupChunk(String backupId, long offset, long len);
+    BackupChunkResult backupChunkSync(String backupId, long offset, long len);
+
+    CompletableFuture<BackupEndResult> backupEnd(String backupId);
+    BackupEndResult backupEndSync(String backupId);
 }

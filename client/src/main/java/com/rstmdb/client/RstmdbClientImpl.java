@@ -6,14 +6,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rstmdb.client.exception.RstmdbException;
 import com.rstmdb.client.model.ApplyEventRequest;
 import com.rstmdb.client.model.ApplyEventResult;
+import com.rstmdb.client.model.BackupBeginResult;
+import com.rstmdb.client.model.BackupChunkResult;
+import com.rstmdb.client.model.BackupEndResult;
 import com.rstmdb.client.model.BatchMode;
 import com.rstmdb.client.model.BatchOperation;
 import com.rstmdb.client.model.BatchResult;
 import com.rstmdb.client.model.CompactResult;
-import com.rstmdb.client.model.FlushAllResult;
 import com.rstmdb.client.model.CreateInstanceRequest;
 import com.rstmdb.client.model.CreateInstanceResult;
 import com.rstmdb.client.model.DeleteInstanceResult;
+import com.rstmdb.client.model.FlushAllResult;
 import com.rstmdb.client.model.HelloResult;
 import com.rstmdb.client.model.Instance;
 import com.rstmdb.client.model.InstanceList;
@@ -22,6 +25,7 @@ import com.rstmdb.client.model.MachineInfo;
 import com.rstmdb.client.model.MachineSummary;
 import com.rstmdb.client.model.PutMachineRequest;
 import com.rstmdb.client.model.PutMachineResult;
+import com.rstmdb.client.model.ReplicationStatusResult;
 import com.rstmdb.client.model.ServerInfo;
 import com.rstmdb.client.model.SnapshotResult;
 import com.rstmdb.client.model.WalReadResult;
@@ -29,17 +33,18 @@ import com.rstmdb.client.model.WalStatsResult;
 import com.rstmdb.client.model.WatchAllOptions;
 import com.rstmdb.client.model.WatchInstanceRequest;
 import com.rstmdb.client.protocol.Operations;
+import com.rstmdb.client.protocol.WireMessage;
+import com.rstmdb.client.protocol.WireMessage.WireResponse;
+import com.rstmdb.client.transport.Connection;
+import com.rstmdb.client.transport.Subscription;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import com.rstmdb.client.protocol.WireMessage;
-import com.rstmdb.client.protocol.WireMessage.WireResponse;
-import com.rstmdb.client.transport.Connection;
-import com.rstmdb.client.transport.Subscription;
 
 /**
  * Official Java client for rstmdb. Thread-safe, supports concurrent operations
@@ -92,6 +97,15 @@ public final class RstmdbClientImpl implements RstmdbClient {
         return connection.getHelloResult();
     }
 
+    @Override
+    public List<String> getNegotiatedFeatures() {
+        HelloResult info = connection.getHelloResult();
+        if (info == null || info.getFeatures() == null) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(info.getFeatures());
+    }
+
     // --- System Operations ---
 
     public CompletableFuture<Void> ping() {
@@ -108,6 +122,16 @@ public final class RstmdbClientImpl implements RstmdbClient {
 
     public ServerInfo getInfoSync() {
         return sync(getInfo());
+    }
+
+    @Override
+    public CompletableFuture<ReplicationStatusResult> replicationStatus() {
+        return doRequest(Operations.REPLICATION_STATUS, Map.of(), ReplicationStatusResult.class);
+    }
+
+    @Override
+    public ReplicationStatusResult replicationStatusSync() {
+        return sync(replicationStatus());
     }
 
     // --- Machine Operations ---
@@ -329,6 +353,55 @@ public final class RstmdbClientImpl implements RstmdbClient {
 
     public FlushAllResult flushAllSync() {
         return sync(flushAll());
+    }
+
+    // --- Backup Operations ---
+
+    @Override
+    public CompletableFuture<BackupBeginResult> backupBegin() {
+        return backupBegin(null);
+    }
+
+    @Override
+    public CompletableFuture<BackupBeginResult> backupBegin(String compression) {
+        Map<String, Object> params = compression != null && !compression.isEmpty()
+                ? Map.of("compression", compression)
+                : Map.of();
+        return doRequest(Operations.BACKUP_BEGIN, params, BackupBeginResult.class);
+    }
+
+    @Override
+    public BackupBeginResult backupBeginSync() {
+        return sync(backupBegin());
+    }
+
+    @Override
+    public BackupBeginResult backupBeginSync(String compression) {
+        return sync(backupBegin(compression));
+    }
+
+    @Override
+    public CompletableFuture<BackupChunkResult> backupChunk(String backupId, long offset, long len) {
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("backup_id", backupId);
+        params.put("offset", offset);
+        params.put("len", len);
+        return doRequest(Operations.BACKUP_CHUNK, params, BackupChunkResult.class);
+    }
+
+    @Override
+    public BackupChunkResult backupChunkSync(String backupId, long offset, long len) {
+        return sync(backupChunk(backupId, offset, len));
+    }
+
+    @Override
+    public CompletableFuture<BackupEndResult> backupEnd(String backupId) {
+        return doRequest(Operations.BACKUP_END, Map.of("backup_id", backupId), BackupEndResult.class);
+    }
+
+    @Override
+    public BackupEndResult backupEndSync(String backupId) {
+        return sync(backupEnd(backupId));
     }
 
     // --- Lifecycle ---

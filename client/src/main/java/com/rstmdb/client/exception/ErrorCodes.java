@@ -16,7 +16,12 @@ public final class ErrorCodes {
     public static final String INSTANCE_EXISTS = "INSTANCE_EXISTS";
     public static final String INVALID_TRANSITION = "INVALID_TRANSITION";
     public static final String GUARD_FAILED = "GUARD_FAILED";
+    public static final String GUARD_UNKNOWN = "GUARD_UNKNOWN";
     public static final String CONFLICT = "CONFLICT";
+    public static final String IDEMPOTENCY_CONFLICT = "IDEMPOTENCY_CONFLICT";
+    public static final String READ_ONLY_MODE = "READ_ONLY_MODE";
+    public static final String REPLICATION_TIMEOUT = "REPLICATION_TIMEOUT";
+    public static final String REPLICATION_ERROR = "REPLICATION_ERROR";
     public static final String WAL_IO_ERROR = "WAL_IO_ERROR";
     public static final String INTERNAL_ERROR = "INTERNAL_ERROR";
     public static final String RATE_LIMITED = "RATE_LIMITED";
